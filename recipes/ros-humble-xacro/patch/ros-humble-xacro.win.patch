@@ -1,0 +1,235 @@
+From 6227bc387aca9db4a470d62f8f215e4e12ab6e1a Mon Sep 17 00:00:00 2001
+From: Melvin Wang <melvin.mc.wang@gmail.com>
+Date: Tue, 28 Dec 2021 17:32:36 -0500
+Subject: [PATCH 1/4] install xacro using console_script entrypoint
+
+---
+ CMakeLists.txt | 14 +++++++++-----
+ package.xml    |  2 ++
+ scripts/xacro  | 33 ---------------------------------
+ setup.cfg      |  3 +++
+ setup.py       | 35 -----------------------------------
+ 5 files changed, 14 insertions(+), 73 deletions(-)
+ delete mode 100755 scripts/xacro
+ create mode 100644 setup.cfg
+ delete mode 100644 setup.py
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index aba4c38d..b95ef222 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -2,17 +2,21 @@ cmake_minimum_required(VERSION 3.5)
+ project(xacro)
+ 
+ find_package(ament_cmake REQUIRED)
++find_package(ament_cmake_python REQUIRED)
+ 
+ install(FILES scripts/completion.bash DESTINATION share/${PROJECT_NAME}/environment)
+ 
+ ## The following manually installs the python package and the entry-point script
+ ## Using ament_cmake, we cannot actually use setup.py to install these...
+ 
+-# install xacro python package
+-ament_python_install_package(xacro)
+-# install main script
+-install(PROGRAMS scripts/xacro DESTINATION bin)
+-install(PROGRAMS scripts/xacro DESTINATION lib/${PROJECT_NAME})
++# install xacro python package w/ console_script entrypoint
++ament_python_install_package(${PROJECT_NAME}
++    SCRIPTS_DESTINATION lib/${PROJECT_NAME})
++
++# copy generated script executables to bin dir so it can be run without ros2 run
++install(
++    DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ament_cmake_python/${PROJECT_NAME}/scripts/
++    DESTINATION bin/)
+ 
+ if(BUILD_TESTING)
+   ## run linters as defined in package.xml
+diff --git a/package.xml b/package.xml
+index 1378222f..4ae16c9f 100644
+--- a/package.xml
++++ b/package.xml
+@@ -20,6 +20,8 @@
+   <author>Robert Haschke</author>
+ 
+   <buildtool_depend>ament_cmake</buildtool_depend>
++  <buildtool_depend>ament_cmake_python</buildtool_depend>
++
+   <depend>ament_index_python</depend>
+   <depend>python3-yaml</depend>
+   <test_depend>ament_lint_auto</test_depend>
+diff --git a/scripts/xacro b/scripts/xacro
+deleted file mode 100755
+index c0e08895..00000000
+--- a/scripts/xacro
++++ /dev/null
+@@ -1,33 +0,0 @@
+-#! /usr/bin/env python3
+-# Copyright (c) 2013, Willow Garage, Inc.
+-# All rights reserved.
+-#
+-# Redistribution and use in source and binary forms, with or without
+-# modification, are permitted provided that the following conditions are met:
+-#
+-#     * Redistributions of source code must retain the above copyright
+-#       notice, this list of conditions and the following disclaimer.
+-#     * Redistributions in binary form must reproduce the above copyright
+-#       notice, this list of conditions and the following disclaimer in the
+-#       documentation and/or other materials provided with the distribution.
+-#     * Neither the name of the Willow Garage, Inc. nor the names of its
+-#       contributors may be used to endorse or promote products derived from
+-#       this software without specific prior written permission.
+-#
+-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+-# POSSIBILITY OF SUCH DAMAGE.
+-
+-# Author: Stuart Glaser
+-# Maintainer: William Woodall <wwoodall@willowgarage.com>
+-
+-import xacro
+-xacro.main()
+diff --git a/setup.cfg b/setup.cfg
+new file mode 100644
+index 00000000..efc71ad4
+--- /dev/null
++++ b/setup.cfg
+@@ -0,0 +1,3 @@
++[options.entry_points]
++console_scripts =
++    xacro = xacro:main
+diff --git a/setup.py b/setup.py
+deleted file mode 100644
+index 3d1142e6..00000000
+--- a/setup.py
++++ /dev/null
+@@ -1,35 +0,0 @@
+-from setuptools import find_packages
+-from setuptools import setup
+-
+-package_name = 'xacro'
+-
+-setup(
+-    name=package_name,
+-    python_requires='>=3',
+-    packages=find_packages(),
+-    data_files=[
+-        ('share/' + package_name, ['package.xml']),
+-        ('share/' + package_name + '/environment', ['scripts/completion.bash']),
+-    ],
+-    install_requires=['setuptools'],
+-    zip_safe=True,
+-    maintainer='Robert Haschke',
+-    maintainer_email='rhaschke@techfak.uni-bielefeld.de',
+-    url='https://github.com/ros/xacro',
+-    keywords=['ROS'],
+-    classifiers=[
+-        'Intended Audience :: Developers',
+-        'Programming Language :: Python',
+-        'Topic :: Software Development',
+-    ],
+-    description='Xacro is an XML macro language.\n'
+-                'With xacro, you can construct shorter and more readable XML files '
+-                'by using macros that expand to larger XML expressions.',
+-    license='BSD',
+-    tests_require=['pytest'],
+-    entry_points={
+-        'console_scripts': [
+-            'xacro = xacro:main'
+-        ],
+-    },
+-)
+
+From 8ddaed2c5c849efc76348179f7f0e0a9315a10d5 Mon Sep 17 00:00:00 2001
+From: Robert Haschke <rhaschke@techfak.uni-bielefeld.de>
+Date: Wed, 29 Dec 2021 08:09:08 +0100
+Subject: [PATCH 2/4] Cleanup comments
+
+---
+ CMakeLists.txt | 10 +++-------
+ 1 file changed, 3 insertions(+), 7 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b95ef222..53afa450 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -6,14 +6,10 @@ find_package(ament_cmake_python REQUIRED)
+ 
+ install(FILES scripts/completion.bash DESTINATION share/${PROJECT_NAME}/environment)
+ 
+-## The following manually installs the python package and the entry-point script
+-## Using ament_cmake, we cannot actually use setup.py to install these...
++# install xacro python package and it's console_script entry-point script
++ament_python_install_package(${PROJECT_NAME} SCRIPTS_DESTINATION lib/${PROJECT_NAME})
+ 
+-# install xacro python package w/ console_script entrypoint
+-ament_python_install_package(${PROJECT_NAME}
+-    SCRIPTS_DESTINATION lib/${PROJECT_NAME})
+-
+-# copy generated script executables to bin dir so it can be run without ros2 run
++# install entry-point script(s) in bin as well
+ install(
+     DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ament_cmake_python/${PROJECT_NAME}/scripts/
+     DESTINATION bin/)
+
+From ea209049f550eec9315d4ab5dcc3157431deb701 Mon Sep 17 00:00:00 2001
+From: Robert Haschke <rhaschke@techfak.uni-bielefeld.de>
+Date: Wed, 29 Dec 2021 09:16:33 +0100
+Subject: [PATCH 3/4] Install to bin via PROGRAMS
+
+... to ensure EXEC permissions
+---
+ CMakeLists.txt | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 53afa450..122b9dec 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -10,9 +10,8 @@ install(FILES scripts/completion.bash DESTINATION share/${PROJECT_NAME}/environm
+ ament_python_install_package(${PROJECT_NAME} SCRIPTS_DESTINATION lib/${PROJECT_NAME})
+ 
+ # install entry-point script(s) in bin as well
+-install(
+-    DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ament_cmake_python/${PROJECT_NAME}/scripts/
+-    DESTINATION bin/)
++install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/ament_cmake_python/${PROJECT_NAME}/scripts/xacro
++        DESTINATION bin)
+ 
+ if(BUILD_TESTING)
+   ## run linters as defined in package.xml
+
+From 9d6927ecdadfa53bb9139ef024a2cc6b69656b47 Mon Sep 17 00:00:00 2001
+From: Robert Haschke <rhaschke@techfak.uni-bielefeld.de>
+Date: Wed, 29 Dec 2021 11:51:23 +0100
+Subject: [PATCH 4/4] Fix script permissions
+
+---
+ CMakeLists.txt | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 122b9dec..6ad4c8c3 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -10,8 +10,10 @@ install(FILES scripts/completion.bash DESTINATION share/${PROJECT_NAME}/environm
+ ament_python_install_package(${PROJECT_NAME} SCRIPTS_DESTINATION lib/${PROJECT_NAME})
+ 
+ # install entry-point script(s) in bin as well
+-install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/ament_cmake_python/${PROJECT_NAME}/scripts/xacro
+-        DESTINATION bin)
++install(
++    DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ament_cmake_python/${PROJECT_NAME}/scripts/
++    DESTINATION bin/
++    USE_SOURCE_PERMISSIONS)
+ 
+ if(BUILD_TESTING)
+   ## run linters as defined in package.xml
